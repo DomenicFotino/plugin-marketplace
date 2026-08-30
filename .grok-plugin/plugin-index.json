@@ -71,6 +71,24 @@
         ]
       }
     },
+    "bot-template-market": {
+      "sha": "9b41e5f99f2146c152ce7384cb9c38f5b64df3fc",
+      "version": "1.0.0",
+      "components": {
+        "mcpServers": [
+          {
+            "name": "bot-template-market",
+            "description": "http"
+          }
+        ],
+        "skills": [
+          {
+            "name": "bot-template-market",
+            "description": "Buy and apply vaulted Grok Bot templates from Bot Template Market. Use when the user wants a bot template, a license, o…"
+          }
+        ]
+      }
+    },
     "browser-use": {
       "sha": "4749bcbfe456e5384b98281a8a66119352197f59",
       "version": "0.1.0",
