@@ -20,7 +20,7 @@ Neon is a serverless Postgres platform that separates compute and storage to off
 
 ## Neon Documentation
 
-The Neon documentation is the source of truth for all Neon-related information. Always verify claims against the official docs before responding. Neon features and APIs evolve, so prefer fetching current docs over relying on training data.
+The Neon documentation is the source of truth for all Neon-related information. For version-sensitive or uncertain Neon claims, consult the relevant current official documentation; use the user's supplied evidence and the task scope for other answers.
 
 ### Fetching Docs as Markdown
 
@@ -62,17 +62,17 @@ Before starting setup, inspect the user's codebase and environment:
 
 ### Self-Driving Setup With Neon's CLI or MCP Server
 
-Offer to inspect existing connected Neon projects or create new ones using the Neon CLI or MCP server. If neither is set up yet, run init with the `--agent` flag. Use `npx -y` to skip the package install prompt. Auth is handled automatically. If the user is not logged in, it opens their browser for OAuth and waits for completion before proceeding.
+Inspect existing connections when relevant. For a requested setup, select the correct account and project before changes. Depending on options and existing state, the optional init command may authenticate, create an API key, configure an editor or MCP, install skills, link a project, write configuration, and pull branch variables into an environment file. Inspect and preserve existing env and config, use only when these effects are within the authorized task, and prefer a scoped alternative when it suffices. Do not silently install or create credentials.
 
 ```bash
 npx -y neonctl@latest init --agent <agent-name>
 ```
 
-Supported `--agent` values: `cursor`, `copilot`, `claude`, `claude-desktop`, `codex`, `opencode`, `cline`, `gemini-cli`, `goose`, `zed`.
+Check the selected CLI version's current help for supported `--agent` values; do not assume a historical list is complete.
 
-This installs the Neon extension (for Cursor/VS Code) or MCP server (for other agents), creates an API key, and adds the `neon-postgres` agent skill to the project.
+Depending on the selected setup and environment, init can install an extension or MCP server, create an API key, add a skill, link a project or update environment configuration. Inspect the current tool behavior before choosing it.
 
-If `init` is not suitable, the individual steps can be run non-interactively:
+For authorized setup where `init` is not suitable, the individual optional steps below can be scoped separately. The `-g` option changes global configuration; do not use it unless that scope is authorized:
 
 - **Extension:** `cursor --install-extension databricks.neon-local-connect`
 - **MCP server:** `npx -y add-mcp https://mcp.neon.tech/mcp -g -n Neon -y -a <agent-name>`
@@ -88,7 +88,7 @@ Use MCP server or CLI to list organizations and projects. Let the user select an
 
 **2. Get Connection String**
 
-Use MCP server or CLI to get the connection string. Store it in `.env` as `DATABASE_URL`. Read the file first before modifying to avoid overwriting existing values.
+Use an appropriate secure tool path if a connection string is needed. Write it only to the authorized secret destination, preserve existing values, and avoid printing or exposing credentials in chat or logs.
 
 **3. Pick Connection Method & Driver**
 
@@ -96,7 +96,7 @@ Refer to the connection methods guide to pick the correct driver based on deploy
 
 **4. User Authentication with Neon Auth (if needed)**
 
-Skip for CLI tools, scripts, or apps without user accounts. If the app needs auth: use MCP server `provision_neon_auth` tool, then see the auth overview (https://neon.com/docs/auth/overview.md) for setup. For auth + database queries, see the JavaScript SDK reference (https://neon.com/docs/reference/javascript-sdk.md).
+Skip for CLI tools, scripts, or apps without user accounts. If the app needs managed auth and provisioning is within the requested scope, verify the selected project and branch before using `provision_neon_auth`, then see the auth overview (https://neon.com/docs/auth/overview.md) for setup. For auth + database queries, see the JavaScript SDK reference (https://neon.com/docs/reference/javascript-sdk.md).
 
 **5. ORM Setup (optional)**
 
@@ -198,7 +198,7 @@ Or fetch the full branching skill from the following URL:
 
 https://neon.com/docs/ai/skills/neon-postgres-branches/SKILL.md
 
-If this skill is not installed you can use the following command to install it:
+If this skill is not installed, read the current documentation instead; install it only when installation is within the requested task and appropriate:
 
 ```bash
 npx skills add neondatabase/agent-skills --skill neon-postgres-branches
