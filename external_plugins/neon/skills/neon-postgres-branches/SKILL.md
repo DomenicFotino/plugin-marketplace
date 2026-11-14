@@ -11,8 +11,7 @@ description: >-
 
 # Neon Postgres Branching
 
-The outcome of this skill should be a created Neon branch (or a clear, actionable next step if creation cannot proceed).
-Choose the correct branch type, then execute branch creation via MCP or CLI.
+Answer the requested branching question or prepare a plan at the requested scope. Create or reset a branch only when that action is authorized and the project, source, target, data sensitivity, permissions, cost and retention are understood. A data-bearing branch contains source data; isolation alone does not authorize copying it. Preserve existing branches and consumers.
 
 - **Normal branch** for realistic migration and query testing with real data.
 - **Schema-only branch (Beta)** for sensitive data workflows where structure is needed without copying rows.
@@ -21,7 +20,7 @@ Choose the correct branch type, then execute branch creation via MCP or CLI.
 
 Use this decision rule first:
 
-1. If the user wants to test complex migrations, performance, or behavior against production-like data, choose a **normal branch**.
+1. If realistic data is required and its use in the selected environment is authorized, consider a **normal branch** from the appropriate source; otherwise use an approved sanitized source or schema-only branch.
 2. If the user needs to avoid copying sensitive data, choose a **schema-only branch**.
 
 If the request is ambiguous, ask one clarifying question:
@@ -41,8 +40,8 @@ CLI link: https://neon.com/docs/reference/cli-quickstart
 2. If MCP is unavailable or not authenticated, check CLI:
    - Run `neonctl --version` to confirm CLI is installed.
    - Run `neonctl projects list` to confirm auth/context.
-3. If CLI is missing, direct installation via quickstart.
-4. If CLI is installed but not authenticated, guide the user through `neonctl auth` (or API key auth), then continue.
+3. If CLI is missing, answer from current documentation or propose installation when it is needed for authorized work.
+4. If CLI is installed but not authenticated, explain the needed authentication and continue only with the appropriate account and scope.
 5. If both MCP and CLI paths are unsuccessful, use the Neon REST API:
    - https://neon.com/docs/guides/branching-neon-api.md
 
@@ -53,31 +52,31 @@ CLI link: https://neon.com/docs/reference/cli-quickstart
 3. Validate with read tools (for example, `describe_branch`).
 4. For migration workflows, prefer branch-based migration flows before applying to main.
 
+## Before any branch creation
+
+Only set an expiration when the agreed retention permits automatic permanent deletion. Check the Console auto-delete default and clear it if no expiration is authorized, then verify the resulting retention. If a timestamp is authorized, use a valid future value from the current [expiration documentation](https://neon.com/docs/guides/branch-expiration), not a copied date. CLI creation may print credentials; `--no-secrets` requires verified Neon CLI 4.9.0 or newer. Older versions may ignore it: use an appropriate secure alternative.
+
 ## Create a Normal Branch (Preferred for Real-Data Migration Testing)
 
-Use this when the user needs realistic testing conditions.
-Real production-like data can expose edge cases your seed or data migration scripts miss, which helps catch migration issues before going live.
+Use this when realistic testing conditions and the selected data copy are authorized. Production-like data may expose edge cases but can include sensitive records; verify the source and intended access first.
 
 Link: https://neon.com/docs/introduction/branching.md
 
 ### Steps
 
 1. Use MCP if already available/authenticated; otherwise verify CLI with `neonctl --version`.
-2. Ensure project context is set (`neonctl set-context --project-id <your-project-id>`) or include `--project-id` on commands.
+2. Select the exact project using `--project-id` on the command; change persistent CLI context only when that configuration change is authorized.
 3. Create branch:
 
 ```bash
 neonctl branches create \
   --name <branch-name> \
   --parent <parent-branch-id-or-name> \
-  --expires-at 2026-12-15T18:02:16Z
+  --project-id <your-project-id> \
+  --no-secrets
 ```
 
-4. Optionally fetch a connection string for the new branch:
-
-```bash
-neonctl connection-string <branch-name>
-```
+4. Retrieve credentials only when needed and deliver them through an authorized secret destination; do not expose connection strings in chat, logs, or shell output.
 
 ## Create a Schema-Only Branch (Beta, Sensitive Data)
 
@@ -95,7 +94,8 @@ neonctl branches create \
   --name <schema-only-branch-name> \
   --parent <parent-branch-id-or-name> \
   --schema-only \
-  --expires-at 2026-12-15T18:02:16Z
+  --project-id <your-project-id> \
+  --no-secrets
 ```
 
 If multiple projects exist, include:
@@ -106,7 +106,7 @@ neonctl branches create \
   --parent <parent-branch-id-or-name> \
   --schema-only \
   --project-id <your-project-id> \
-  --expires-at 2026-12-15T18:02:16Z
+  --no-secrets
 ```
 
 ### Beta Support Guidance (Mandatory)
@@ -120,7 +120,7 @@ Schema-only branching is in Beta. If users report unexpected behavior, errors, o
 
 ## Reset from parent
 
-Use this when a child branch has drifted and the user wants a clean refresh from the parent branch's latest schema and data.
+Use this when a child branch has drifted and the user wants a clean refresh from the parent branch's latest schema and data. Before a reset, verify the exact project, target, parent, owner, consumers and recoverable pre-reset state; the action replaces child changes and is not an ordinary read-only check.
 
 Link: https://neon.com/docs/guides/reset-from-parent.md
 
@@ -139,7 +139,7 @@ Link: https://neon.com/docs/guides/reset-from-parent.md
 ### Hard constraints and blockers
 
 - Only child branches can be reset (root branches and schema-only root branches cannot be reset from parent).
-- If the target branch has children, reset is blocked until those child branches are removed.
+- If the target branch has children, the provider blocks reset. Preserve those children unless their exact removal is authorized; do not delete them merely to unblock the reset.
 - After a parent branch is restored from snapshot, reset-from-parent may be unavailable for up to 24 hours.
 - Reset-from-parent always uses the current parent state; use Instant restore for point-in-time recovery needs.
 
@@ -155,13 +155,9 @@ If project context is not already set, include project ID:
 neonctl branches reset <id|name> --parent --preserve-under-name <backup-branch-name> --project-id <project-id>
 ```
 
-`--preserve-under-name` keeps the pre-reset state as a backup branch for rollback, but adds one extra branch to clean up later.
+`--preserve-under-name` keeps the pre-reset state as a backup branch for rollback; retain it according to the agreed recovery and retention requirements.
 
-Optional context setup to avoid repeating `--project-id`:
-
-```bash
-neonctl set-context --project-id <project-id>
-```
+Prefer `--project-id` for the selected project; change persistent CLI context only when authorized for the task.
 
 ### Console and API usage
 
@@ -171,7 +167,7 @@ neonctl set-context --project-id <project-id>
 ## Notes and Caveats
 
 - Schema-only branches are for structure-only cloning and sensitive/compliant data controls.
-- Schema-only branches are independent root branches (no parent branch and no shared history), so reset-from-parent does not apply.
+- A newly created schema-only branch is an independent root with no shared history, so reset-from-parent does not initially apply. A later restore may copy data and assign a parent; verify actual branch state before treating it as schema-only.
 - For migration testing that depends on real-world row shapes, volumes, and edge cases, prefer normal branches.
 - Root branch allowances and per-branch storage limits can cap how many schema-only branches users can create.
 - If a user is unsure, default recommendation is:
@@ -182,26 +178,21 @@ neonctl set-context --project-id <project-id>
 
 If the user asks for process recommendations (not just a single command), suggest these:
 
-- **One branch per PR:** Create branch when PR opens, delete when merged/closed, keep migration tests isolated.
-- **One branch per test run:** Create branch at pipeline start, run migrations/tests, delete at end for deterministic CI.
+- **One branch per PR:** Where authorized, isolate migration tests; configure lifecycle and cleanup only for the named disposable branch with agreed retention.
+- **One branch per test run:** Where authorized, use isolated disposable branches with an explicit retention and cleanup policy.
 - **One branch per developer:** Isolated dev environments with production-like shape; avoid team collisions on shared test data.
 - **PII-aware branching:** If production has sensitive data, derive dev/PR branches from an anonymized branch or use schema-only branches.
-- **Ephemeral lifecycle hygiene:** Set branch expiration and automate cleanup so old branches do not accumulate avoidable storage/history cost.
+- **Ephemeral lifecycle hygiene:** Consider expiration or automated cleanup only for the named disposable branches and agreed retention.
 
-### Post-creation environment update prompt
+### Post-creation environment updates
 
-After branch creation, ask whether the user wants to update local environment credentials to point at the new branch.
-
-- Ask: "Do you want me to update your `.env` `DATABASE_URL` to this new branch connection string?"
-- If yes, write the new branch connection string to the requested env file/key.
-- If no, leave credentials unchanged and share the connection string for manual use.
-- Never overwrite an existing env key without explicit confirmation.
+Update a specified environment file or key when that change is authorized in the current task, preserving unrelated values and using an approved secret path. If the requested scope does not establish such a change, explain the available next step. Never paste credentials into a response or log.
 
 ## Branching in CI/CD
 
 Common CI/CD use cases for Neon branches:
 
-- **Per-PR preview deployments:** Branch on PR open, deploy the preview against it, delete on close. Each PR gets an isolated database branch. Injecting the branch's `DATABASE_URL` into the deployed app is hosting-provider-specific — see [preview-branches-with-cloudflare](https://github.com/neondatabase/preview-branches-with-cloudflare), [preview-branches-with-vercel](https://github.com/neondatabase/preview-branches-with-vercel), or [preview-branches-with-fly](https://github.com/neondatabase/preview-branches-with-fly) for tested patterns.
+- **Per-PR preview deployments:** Where authorized, branch on PR open and deploy the preview against it; delete only a named disposable branch under the agreed lifecycle. Each PR gets an isolated database branch. Injecting the branch's `DATABASE_URL` into the deployed app is hosting-provider-specific — see [preview-branches-with-cloudflare](https://github.com/neondatabase/preview-branches-with-cloudflare), [preview-branches-with-vercel](https://github.com/neondatabase/preview-branches-with-vercel), or [preview-branches-with-fly](https://github.com/neondatabase/preview-branches-with-fly) for tested patterns.
 - **Migration testing in CI:** Run risky schema changes against a branch with production-like data before merge.
 - **Schema diff visibility:** Use the [schema-diff GitHub Action](https://github.com/marketplace/actions/neon-schema-diff-github-action) to auto-comment a DB-layer diff on the PR.
 
@@ -217,8 +208,8 @@ Common CI/CD use cases for Neon branches:
 2. Share docs link: https://neon.com/docs/introduction/branching
 3. Check the available/authenticated tool path first (MCP, otherwise CLI with `neonctl --version`).
 4. Provide commands:
-   - `neonctl branches create --name migration-test --parent main --expires-at 2026-12-15T18:02:16Z`
-   - `neonctl connection-string migration-test`
+   - `neonctl branches create --name migration-test --parent main --project-id <your-project-id> --no-secrets`
+   - Retrieve credentials only through the authorized secret workflow if needed.
 
 ### Example 2: Sensitive data development workflow
 
@@ -230,7 +221,7 @@ Common CI/CD use cases for Neon branches:
 2. Share docs link: https://neon.com/docs/guides/branching-schema-only
 3. Check the available/authenticated tool path first (MCP, otherwise CLI with `neonctl --version`).
 4. Provide command:
-   - `neonctl branches create --name compliance-dev --parent main --schema-only --project-id <your-project-id> --expires-at 2026-12-15T18:02:16Z`
+   - `neonctl branches create --name compliance-dev --parent main --schema-only --project-id <your-project-id> --no-secrets`
 5. Mention Beta support path:
    - https://console.neon.tech/app/projects?modal=feedback
    - https://discord.gg/92vNTzKDGp
